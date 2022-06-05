@@ -13,6 +13,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+function verifyJWT(req,res,next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({message: 'unauthorized access'});
+  }
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
+    if (err) {
+      return res.status(403).send({message : 'Forbiden'});
+    }
+    console.log('decoded',decoded);
+    req.decoded = decoded;
+    next();
+  })
+        // console.log('inside verifyJWT',authHeader);
+        
+}
+
 //Mongodb database
 /*
 user :geniusDbuser
@@ -73,13 +91,19 @@ async function run(){
 
       // Order collection API
 
-      app.get('/orders' , async(req,res) =>{
+      app.get('/orders' ,verifyJWT, async(req,res) =>{
         const email = req.query.email;
+        const decodedEmail = req.decoded.email;
+        if (email === decodedEmail) {
+          const query = {email: email};
+          const cursor = orderCollection.find(query);
+          const orders = await cursor.toArray();
+          res.send(orders);
+          }
+          else{
+            res.status(403).send({message : 'forbiden'});
+          }
         
-        const query = {email: email};
-        const cursor = orderCollection.find(query);
-        const orders = await cursor.toArray();
-        res.send(orders);
       })
 
 
